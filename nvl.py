@@ -1,13 +1,24 @@
 import os
 import time
 import json
-import requests
-from datetime import datetime
+
+# Kiểm tra và cài đặt thư viện requests
+try:
+    import requests
+except ImportError:
+    print("Đang cài đặt thư viện requests...")
+    os.system("pip install requests")
+    import requests
+
+# Kiểm tra và cài đặt thư viện pystyle
 try:
     from pystyle import Colors, Colorate, Write, Center, Box
-except:
+except ImportError:
+    print("Đang cài đặt thư viện pystyle...")
     os.system("pip install pystyle")
     from pystyle import Colors, Colorate, Write, Center, Box
+
+from datetime import datetime
 
 # Color functions
 def error_color(string: str):
