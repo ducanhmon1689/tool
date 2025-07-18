@@ -292,11 +292,7 @@ if check_log == 'success':
                         if check_duyet > 9:
                             sleep(3)
                             duyet_job(type_nhan, token_tds, api_type)
-                    if choice == 1:  # Thực hiện back cho Follow
-                        for j in range(2):
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] {Colors.cyan}🔙 Thực hiện hành động Back lần {j+1}")
-                            subprocess.run(['input', 'keyevent', 'KEYCODE_BACK'])
-                            sleep(5)
+                    
                     if dem_tong == max_job:
                         break
                     else:
