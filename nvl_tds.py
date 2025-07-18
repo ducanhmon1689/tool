@@ -2,21 +2,23 @@
 import os
 from time import sleep
 from datetime import datetime
-import subprocess
 
 os.environ['TZ'] = 'Asia/Ho_Chi_Minh'
 
-try:
-    import requests
-except:
-    os.system("pip3 install requests")
-    import requests
+# Kiểm tra và cài đặt các thư viện cần thiết
+def install_required_libraries():
+    libraries = ['requests', 'pystyle']
+    for lib in libraries:
+        try:
+            __import__(lib)
+        except ImportError:
+            print(f"Đang cài đặt thư viện {lib}...")
+            os.system(f"pip3 install {lib}")
 
-try:
-    from pystyle import Colors, Colorate, Write, Center, Add, Box
-except:
-    os.system("pip3 install pystyle")
-    from pystyle import Colors, Colorate, Write, Center, Add, Box
+install_required_libraries()
+
+import requests
+from pystyle import Colors, Colorate, Write, Center, Add, Box
 
 headers = {
     'authority': 'traodoisub.com',
@@ -260,11 +262,6 @@ if check_log == 'success':
                             if check_duyet > 9:
                                 sleep(3)
                                 duyet_job(type_nhan[i], token_tds, api_type[i])
-                        if type_load[i] == 'tiktok_follow' or type_load[i] == 'tiktok_follow':  # Thực hiện back cho Follow hoặc Follow+Tym
-                            for j in range(2):
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] {Colors.cyan}🔙 Thực hiện hành động Back lần {j+1}")
-                                subprocess.run(['input', 'keyevent', 'KEYCODE_BACK'])
-                                sleep(5)
                         if dem_tong == max_job:
                             break
                         else:
@@ -292,7 +289,6 @@ if check_log == 'success':
                         if check_duyet > 9:
                             sleep(3)
                             duyet_job(type_nhan, token_tds, api_type)
-                    
                     if dem_tong == max_job:
                         break
                     else:
