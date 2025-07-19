@@ -294,11 +294,7 @@ if check_log == 'success':
                             sleep(3)
                             duyet_job(type_nhan, token_tds, uid)
                             dem_duyet = 0  # Reset đếm sau khi nhận xu
-                    if type_load == 'tiktok_follow':  # Thực hiện back cho Follow
-                        for j in range(2):
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] {Colors.cyan}🔙 Thực hiện hành động Back lần {j+1}")
-                            subprocess.run(['input', 'keyevent', 'KEYCODE_BACK'])
-                            sleep(5)
+                    
                     if dem_tong == max_job:
                         break
                     else:
