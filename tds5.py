@@ -63,7 +63,7 @@ def duyet_job(type_job, token, uid):
             print(dai)
             print(f"{Colors.cyan}Nhận thành công {r['data']['job_success']} nhiệm vụ | {Colors.green}{r['data']['msg']} | {Colors.yellow}{r['data']['xu']}")
             print(dai)
-            return 'error'
+            return 'success'
         else:
             print(f"{Colors.red}{r['error']}")
             return 'error'
@@ -234,7 +234,8 @@ if check_log == 'success':
         type_type = 'FOLLOW+TYM'
 
     dem_tong = 0
-    dem_duyet = 0  # Biến đếm số job để nhận xu
+    dem_duyet = 0
+    job_ids = []  # Lưu danh sách id job đã duyệt thành công
 
     while True:
         if choice == 3:
@@ -254,13 +255,16 @@ if check_log == 'success':
                         if check_duyet != 'error':
                             dem_tong += 1
                             dem_duyet += 1
+                            job_ids.append((uid, type_nhan[i]))  # Lưu id và type_nhan
                             t_now = datetime.now().strftime("%H:%M:%S")
                             print(f'{Colors.yellow}[{dem_tong}] {Colors.red}| {Colors.cyan}{t_now} {Colors.red}| {Colors.pink}{type_type} {Colors.red}| {Colors.light_gray}{uid}')
-                            if dem_duyet == 10:  # Nhận xu sau 10 job
-                                sleep(3)
-                                duyet_job(type_nhan[i], token_tds, uid)
-                                dem_duyet = 0  # Reset đếm sau khi nhận xu
-                        if type_load[i] == 'tiktok_follow':  # Thực hiện back cho Follow hoặc Follow+Tym
+                            if dem_duyet == 5:  # Nhận xu sau 5 job
+                                for job_id, nhan_type in job_ids:
+                                    sleep(3)
+                                    duyet_job(nhan_type, token_tds, job_id)
+                                dem_duyet = 0
+                                job_ids = []  # Xóa danh sách id sau khi nhận xu
+                        if type_load[i] == 'tiktok_follow':  # Thực hiện back cho Follow
                             for j in range(2):
                                 print(f"[{datetime.now().strftime('%H:%M:%S')}] {Colors.cyan}🔙 Thực hiện hành động Back lần {j+1}")
                                 subprocess.run(['input', 'keyevent', 'KEYCODE_BACK'])
@@ -288,12 +292,15 @@ if check_log == 'success':
                     if check_duyet != 'error':
                         dem_tong += 1
                         dem_duyet += 1
+                        job_ids.append((uid, type_nhan))  # Lưu id và type_nhan
                         t_now = datetime.now().strftime("%H:%M:%S")
                         print(f'{Colors.yellow}[{dem_tong}] {Colors.red}| {Colors.cyan}{t_now} {Colors.red}| {Colors.pink}{type_type} {Colors.red}| {Colors.light_gray}{uid}')
                         if dem_duyet == 5:  # Nhận xu sau 5 job
-                            sleep(3)
-                            duyet_job(type_nhan, token_tds, uid)
-                            dem_duyet = 0  # Reset đếm sau khi nhận xu
+                            for job_id, nhan_type in job_ids:
+                                sleep(3)
+                                duyet_job(nhan_type, token_tds, job_id)
+                            dem_duyet = 0
+                            job_ids = []  # Xóa danh sách id sau khi nhận xu
                     
                     if dem_tong == max_job:
                         break
@@ -305,10 +312,8 @@ if check_log == 'success':
         if dem_tong == max_job:
             # Nhận xu lần cuối nếu còn job chưa nhận
             if dem_duyet > 0:
-                sleep(3)
-                if choice == 3:
-                    duyet_job(type_nhan[i], token_tds, uid)
-                else:
-                    duyet_job(type_nhan, token_tds, uid)
+                for job_id, nhan_type in job_ids:
+                    sleep(3)
+                    duyet_job(nhan_type, token_tds, job_id)
             print(f'{Colors.green}Hoàn thành {max_job} nhiệm vụ!')
             break
