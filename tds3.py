@@ -170,7 +170,7 @@ if check_log == 'success':
             break
         elif check_log == 'error_token':
             os.system('clear')
-            print(Colors.red + f"ID tiktok chưa được thêm vào cấu hình, vui lòng thêm vào cấu hình rồi like lại!\n")
+            print(Colors.red + f"ID tiktok chưa được thêm vào cấu hình, vui lòng thêm vào cấu hình rồi nhập lại!\n")
         else:
             os.system('clear')
             print(Colors.red + f"Lỗi sever vui lòng nhập lại!\n")
@@ -222,21 +222,19 @@ if check_log == 'success':
         type_duyet = 'TIKTOK_FOLLOW_CACHE'
         type_nhan = 'TIKTOK_FOLLOW'
         type_type = 'FOLLOW'
-        api_type = 'TIKTOK_FOLLOW_API'
     elif choice == 2:
         type_load = 'tiktok_like'
         type_duyet = 'TIKTOK_LIKE_CACHE'
         type_nhan = 'TIKTOK_LIKE'
-        api_type = 'TIKTOK_LIKE_API'
         type_type = 'TYM'
     else:  # choice == 3
         type_load = ['tiktok_follow', 'tiktok_like']
         type_duyet = ['TIKTOK_FOLLOW_CACHE', 'TIKTOK_LIKE_CACHE']
         type_nhan = ['TIKTOK_FOLLOW', 'TIKTOK_LIKE']
-        api_type = ['TIKTOK_FOLLOW_API', 'TIKTOK_LIKE_API']
         type_type = 'FOLLOW+TYM'
 
     dem_tong = 0
+    dem_duyet = 0  # Biến đếm số job để nhận xu
 
     while True:
         if choice == 3:
@@ -255,12 +253,14 @@ if check_log == 'success':
                         check_duyet = duyet_job(type_duyet[i], token_tds, uid)
                         if check_duyet != 'error':
                             dem_tong += 1
+                            dem_duyet += 1
                             t_now = datetime.now().strftime("%H:%M:%S")
                             print(f'{Colors.yellow}[{dem_tong}] {Colors.red}| {Colors.cyan}{t_now} {Colors.red}| {Colors.pink}{type_type} {Colors.red}| {Colors.light_gray}{uid}')
-                            if check_duyet > 9:
+                            if dem_duyet == 5:  # Nhận xu sau 5 job
                                 sleep(3)
                                 duyet_job(type_nhan[i], token_tds, uid)
-                        if type_load[i] == 'tiktok_follow' or type_load[i] == 'tiktok_follow':  # Thực hiện back cho Follow hoặc Follow+Tym
+                                dem_duyet = 0  # Reset đếm sau khi nhận xu
+                        if type_load[i] == 'tiktok_follow':  # Thực hiện back cho Follow hoặc Follow+Tym
                             for j in range(2):
                                 print(f"[{datetime.now().strftime('%H:%M:%S')}] {Colors.cyan}🔙 Thực hiện hành động Back lần {j+1}")
                                 subprocess.run(['input', 'keyevent', 'KEYCODE_BACK'])
@@ -287,11 +287,18 @@ if check_log == 'success':
                     check_duyet = duyet_job(type_duyet, token_tds, uid)
                     if check_duyet != 'error':
                         dem_tong += 1
+                        dem_duyet += 1
                         t_now = datetime.now().strftime("%H:%M:%S")
                         print(f'{Colors.yellow}[{dem_tong}] {Colors.red}| {Colors.cyan}{t_now} {Colors.red}| {Colors.pink}{type_type} {Colors.red}| {Colors.light_gray}{uid}')
-                        if check_duyet > 9:
+                        if dem_duyet == 5:  # Nhận xu sau 5 job
                             sleep(3)
                             duyet_job(type_nhan, token_tds, uid)
+                            dem_duyet = 0  # Reset đếm sau khi nhận xu
+                    if type_load == 'tiktok_follow':  # Thực hiện back cho Follow
+                        for j in range(2):
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] {Colors.cyan}🔙 Thực hiện hành động Back lần {j+1}")
+                            subprocess.run(['input', 'keyevent', 'KEYCODE_BACK'])
+                            sleep(5)
                     if dem_tong == max_job:
                         break
                     else:
@@ -300,5 +307,12 @@ if check_log == 'success':
                             sleep(1)
 
         if dem_tong == max_job:
+            # Nhận xu lần cuối nếu còn job chưa nhận
+            if dem_duyet > 0:
+                sleep(3)
+                if choice == 3:
+                    duyet_job(type_nhan[i], token_tds, uid)
+                else:
+                    duyet_job(type_nhan, token_tds, uid)
             print(f'{Colors.green}Hoàn thành {max_job} nhiệm vụ!')
             break
