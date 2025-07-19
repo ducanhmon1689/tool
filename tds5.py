@@ -256,7 +256,7 @@ if check_log == 'success':
                             dem_duyet += 1
                             t_now = datetime.now().strftime("%H:%M:%S")
                             print(f'{Colors.yellow}[{dem_tong}] {Colors.red}| {Colors.cyan}{t_now} {Colors.red}| {Colors.pink}{type_type} {Colors.red}| {Colors.light_gray}{uid}')
-                            if dem_duyet == 5:  # Nhận xu sau 5 job
+                            if dem_duyet == 10:  # Nhận xu sau 10 job
                                 sleep(3)
                                 duyet_job(type_nhan[i], token_tds, uid)
                                 dem_duyet = 0  # Reset đếm sau khi nhận xu
