@@ -1,21 +1,15 @@
 import os
 import sys
 import threading
+import time
 from time import sleep
 from datetime import datetime
 import requests
+import subprocess
 from pystyle import Colors, Colorate, Write, Center, Box
 
 # Ensure the current directory is in the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-# Import follow_like.py functions
-try:
-    from follow_like import perform_action
-except ImportError:
-    print(Colors.red + "[!] Không tìm thấy follow_like.py trong cùng thư mục!")
-    print(Colors.red + "[!] Vui lòng kiểm tra file follow_like.py tồn tại và đúng tên trong thư mục hiện tại.")
-    sys.exit(1)
 
 # ANSI color codes
 den = "\033[1;90m"
@@ -34,6 +28,48 @@ thanh_dep = red + "[" + trang + "=.=" + red + "] " + trang + "=> "
 
 # Lock for thread-safe printing
 print_lock = threading.Lock()
+
+# Thiết lập thư mục log
+log_dir = os.path.join(os.path.dirname(__file__), 'log')
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, 'follow_client.log')
+
+def log(message):
+    """Ghi log vào console và file"""
+    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+    with print_lock:
+        print(f"{timestamp} - {message}")
+    with open(log_file, 'a', encoding='utf-8') as f:
+        f.write(f"{timestamp} - {message}\n")
+
+def get_device_id():
+    """Lấy device_id của thiết bị Android"""
+    try:
+        result = subprocess.run(['getprop', 'ro.serialno'], capture_output=True, text=True, check=True)
+        device_id = result.stdout.strip()
+        log(f"Device ID: {device_id}")
+        return device_id
+    except Exception as e:
+        log(f"Lỗi khi lấy device_id: {str(e)}")
+        return None
+
+def send_follow_request(url='http://10.0.0.2:8000/follow'):
+    """Gửi yêu cầu Follow đến web server trên PC và nhận kết quả"""
+    try:
+        device_id = get_device_id()
+        if not device_id:
+            return "Error: Cannot get device_id"
+        headers = {'Content-Type': 'application/json'}
+        data = {'task': 'FOLLOW', 'device_id': device_id}
+        log(f"Đang gửi yêu cầu đến {url} với device_id: {device_id}")
+        response = requests.post(url, json=data, headers=headers, timeout=10)
+        response.raise_for_status()
+        result = response.json()
+        log(f"Kết quả từ server: {result}")
+        return result.get('result', 'Error: No result')
+    except Exception as e:
+        log(f"Lỗi khi gửi yêu cầu: {str(e)}")
+        return f"Error: {str(e)}"
 
 # Load devices from devices.txt
 def load_devices(file_path="devices.txt"):
@@ -236,153 +272,4 @@ def process_account(index, username, token_tds, nhiem_vu, dl, nv_nhan):
     dem = 0
     ntool = 0
     consecutive_nha_follow = 0  # Counter for consecutive "Nhả follow"
-    max_consecutive_nha_follow = 5  # Max consecutive "Nhả follow" before stopping
-    while True:
-        if ntool == 2:
-            break
-        listfollow = tds.get_job('tiktok_follow')
-        if listfollow == False:
-            with print_lock:
-                print(red + f'[{username}] Không Get Được Nhiệm Vụ Follow              ', end='\r')
-                sleep(2)
-                print(' ' * 50, end='\r')
-        elif 'error' in listfollow.text:
-            if listfollow.json()['error'] == 'Thao tác quá nhanh vui lòng chậm lại':
-                coun = listfollow.json()['countdown']
-                with print_lock:
-                    print(f'{red}[{username}] Đang Get Nhiệm Vụ Follow, COUNTDOWN: {str(round(coun, 3))} ', end='\r')
-                    sleep(2)
-                    print(' ' * 50, end='\r')
-            elif listfollow.json()["error"] == 'Vui lòng ấn NHẬN TẤT CẢ rồi sau đó tiếp tục làm nhiệm vụ để tránh lỗi!':
-                tds.nhan_xu('TIKTOK_FOLLOW_API', 'TIKTOK_FOLLOW')
-            else:
-                with print_lock:
-                    print(red + f'[{username}] {listfollow.json()["error"]}', end='\r')
-                    sleep(2)
-                    print(' ' * 50, end='\r')
-        else:
-            try:
-                listfollow = listfollow.json()['data']
-            except:
-                with print_lock:
-                    print(red + f'[{username}] Hết Nhiệm Vụ Follow                             ', end='\r')
-                    sleep(2)
-                    print(' ' * 50, end='\r')
-                continue
-            if len(listfollow) == 0:
-                with print_lock:
-                    print(red + f'[{username}] Hết Nhiệm Vụ Follow                             ', end='\r')
-                    sleep(2)
-                    print(' ' * 50, end='\r')
-            else:
-                with print_lock:
-                    print(f'{luc}[{username}] Tìm Thấy {vang}{len(listfollow)} {luc}Nhiệm Vụ Follow                       ', end='\r')
-                    sleep(2)
-                    print(' ' * 50, end='\r')
-                for i in listfollow:
-                    id = i['id']
-                    link = i['link']
-                    if open_tiktok_link(link):
-                        # Call perform_action from follow_like.py
-                        result = perform_action("termux_device", 'follow')  # Placeholder device ID for Termux
-                        if result == "Follow ok":
-                            consecutive_nha_follow = 0  # Reset counter on success
-                        elif result == "Nhả follow":
-                            consecutive_nha_follow += 1
-                            with print_lock:
-                                print(red + f"[!] [{username}] Nhả follow cho ID: {id} (Lần {consecutive_nha_follow}/{max_consecutive_nha_follow})")
-                            if consecutive_nha_follow >= max_consecutive_nha_follow:
-                                with print_lock:
-                                    print(red + f"[!] [{username}] Đã đạt {max_consecutive_nha_follow} lần Nhả follow liên tục. Dừng tool cho tài khoản {username}.")
-                                return
-                        else:
-                            consecutive_nha_follow = 0  # Reset counter on other results
-
-                        # Swipe down and press Back
-                        swipe_and_back()
-                        
-                        cache = tds.cache(id, 'TIKTOK_FOLLOW_CACHE')
-                        if cache != True:
-                            tg = datetime.now().strftime('%H:%M:%S')
-                            hien = f'{vang}[{red}X{vang}] {red}| {lam}{tg} {red}| {vang}FOLLOW {red}| {trang}{id} {red}|'
-                            with print_lock:
-                                print(hien, end='\r')
-                                sleep(1)
-                                print(' ' * 80, end='\r')
-                        else:
-                            dem += 1
-                            tg = datetime.now().strftime('%H:%M:%S')
-                            with print_lock:
-                                print(f'{vang}[{trang}{dem}{vang}] {red}| {lam}{tg} {red}| {Colorate.Horizontal(Colors.yellow_to_red, "FOLLOW")} {red}| {trang}{id} {red}|')
-                            delay(dl)
-                            if dem % nv_nhan == 0:
-                                nhan = tds.nhan_xu('TIKTOK_FOLLOW_API', 'TIKTOK_FOLLOW')
-                                if nhan == 0:
-                                    with print_lock:
-                                        print(luc + f'[{username}] Nhận Xu Thất Bại Acc Tiktok Của Bạn Ổn Chứ ')
-                                        print(f'{thanh_xau}{luc}Nhập {red}[{vang}1{red}] {luc}Để Thay Nhiệm Vụ ')
-                                        print(f'{thanh_xau}{luc}Nhập {red}[{vang}2{red}] {luc}Thay Acc Tiktok ')
-                                        print(f'{thanh_xau}{luc}Nhấn {red}[{vang}Enter{red}] {luc}Để Tiếp Tục')
-                                    chon = input(f'{thanh_xau}{luc}Nhập {trang}===>: {vang}')
-                                    if chon == '1':
-                                        ntool = 2
-                                        break
-                                    elif chon == '2':
-                                        ntool = 1
-                                        break
-                                    with print_lock:
-                                        bongoc(14)
-        if ntool == 1 or ntool == 2:
-            break
-
-# Main function
-def main():
-    os.system('clear')
-    banner = '''
-    ████████╗██████╗ ███████╗
-    ╚══██╔══╝██╔══██╗██╔════╝
-       ██║   ██║  ██║███████╗
-       ██║   ██║  ██║╚════██║
-       ██║   ██████╔╝███████║
-       ╚═╝   ╚═════╝ ╚══════╝
-    '''
-    print(Colorate.Horizontal(Colors.yellow_to_red, Center.XCenter(banner)))
-    print(red + Center.XCenter(Box.DoubleCube("Tool TDS TikTok Multi-Task v1.7 - Termux")))
-
-    # Verify follow_like.py exists
-    if not os.path.isfile("follow_like.py"):
-        print(Colors.red + "[!] File follow_like.py không tồn tại trong thư mục hiện tại!")
-        print(Colors.red + "[!] Vui lòng đảm bảo follow_like.py được đặt cùng thư mục với tool.py.")
-        sys.exit(1)
-
-    # Load devices from devices.txt
-    device_list = load_devices()
-    if not device_list:
-        print(red + "[!] Không tìm thấy tài khoản nào trong devices.txt!")
-        sys.exit(1)
-
-    # Auto-select Follow task, Delay=6, Claim coins after 8 jobs
-    nhiem_vu = '2'
-    dl = 6
-    nv_nhan = 8
-
-    # Create threads for each account
-    threads = []
-    for index, username, token_tds in device_list:
-        thread = threading.Thread(target=process_account, args=(index, username, token_tds, nhiem_vu, dl, nv_nhan))
-        threads.append(thread)
-        thread.start()
-
-    # Wait for all threads to complete
-    for thread in threads:
-        thread.join()
-
-    print(luc + "[*] Đã xử lý tất cả tài khoản. Thoát chương trình.")
-    sys.exit(0)
-
-if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print(red + "\n[!] Đã thoát chương trình.")
-        sys.exit(0)
+    max_consecutive_nha_follow = 5  # Max consecutive "Nhả follow
