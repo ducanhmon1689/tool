@@ -16,7 +16,7 @@ def log(message):
     with open(log_file, 'a', encoding='utf-8') as f:
         f.write(f"{timestamp} - {message}\n")
 
-def send_follow_request(url='http://127.0.0.1:8000/follow'):
+def send_follow_request(url='http://10.0.0.2:8000/follow'):
     """Gửi yêu cầu Follow đến web server trên PC và nhận kết quả"""
     try:
         headers = {'Content-Type': 'application/json'}
