@@ -9,7 +9,7 @@ import pytesseract
 # Thiết lập thư mục log
 log_dir = os.path.join(os.path.dirname(__file__), 'log')
 os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, 'follow_bot.log')
+log_file = os.path.join(log_dir, 'check_follow_bot.log')
 
 def log(message):
     """Ghi log vào console và file"""
@@ -38,18 +38,6 @@ def get_screen_resolution():
     log("Không thể lấy độ phân giải màn hình, sử dụng mặc định 1080x1920")
     return 1080, 1920
 
-def tap(x, y):
-    """Nhấn vào tọa độ (x, y) bằng Termux API"""
-    command = f"termux-toast | input tap {x} {y}"
-    run_termux_command(command)
-    time.sleep(1)
-
-def swipe(start_x, start_y, end_x, end_y, duration_ms=300):
-    """Vuốt từ (start_x, start_y) đến (end_x, end_y)"""
-    command = f"termux-toast | input swipe {start_x} {start_y} {end_x} {end_y} {duration_ms}"
-    run_termux_command(command)
-    time.sleep(1)
-
 def capture_screenshot():
     """Chụp ảnh màn hình bằng Termux API"""
     screenshot_path = "/sdcard/screenshot.png"
@@ -58,66 +46,65 @@ def capture_screenshot():
     run_termux_command(f"cp {screenshot_path} {local_path}")
     return local_path, screenshot_path
 
-def check_follow_status():
+def crop_image(image_path, x, y, width=200, height=100):
+    """Cắt ảnh quanh khu vực nút Follow để cải thiện độ chính xác OCR"""
+    try:
+        img = Image.open(image_path)
+        left = max(0, x - width // 2)
+        top = max(0, y - height // 2)
+        right = min(img.width, x + width // 2)
+        bottom = min(img.height, y + height // 2)
+        cropped_img = img.crop((left, top, right, bottom))
+        cropped_path = image_path.replace('.png', '_cropped.png')
+        cropped_img.save(cropped_path)
+        return cropped_path
+    except Exception as e:
+        log(f"Lỗi khi cắt ảnh: {e}")
+        return None
+
+def check_follow_status(follow_x_percent=33, follow_y_percent=25):
     """Kiểm tra trạng thái Follow bằng OCR"""
     try:
+        # Lấy độ phân giải màn hình
+        screen_width, screen_height = get_screen_resolution()
+        follow_x = int(screen_width * (follow_x_percent / 100))
+        follow_y = int(screen_height * (follow_y_percent / 100))
+
+        # Chụp và cắt ảnh màn hình
+        log("Chụp ảnh màn hình...")
         local_path, remote_path = capture_screenshot()
-        text = pytesseract.image_to_string(Image.open(local_path))
-        if "Following" in text or "Friends" in text:
+        cropped_path = crop_image(local_path, follow_x, follow_y)
+        if not cropped_path:
+            return False
+
+        # Phân tích văn bản bằng OCR
+        log("Phân tích trạng thái Follow...")
+        text = pytesseract.image_to_string(Image.open(cropped_path)).strip().lower()
+        log(f"Văn bản OCR: {text}")
+
+        # Kiểm tra trạng thái
+        if "following" in text or "friends" in text:
             return "Nhả follow"
-        else:
+        elif "follow" in text:
             return "Follow ok"
-    except Exception as e:
-        log(f"Lỗi khi phân tích ảnh: {e}")
-        return False
-    finally:
-        if os.path.exists(local_path):
-            os.remove(local_path)
-        run_termux_command(f"rm {remote_path}")
-
-def perform_action(task_type, follow_x_percent=33, follow_y_percent=25):
-    """Thực hiện thao tác Follow và kiểm tra trạng thái"""
-    try:
-        if task_type == "follow":
-            # Lấy độ phân giải màn hình
-            screen_width, screen_height = get_screen_resolution()
-            follow_x = int(screen_width * (follow_x_percent / 100))
-            follow_y = int(screen_height * (follow_y_percent / 100))
-
-            # Nhấn nút Follow
-            log("Nhấn nút Follow...")
-            tap(follow_x, follow_y)
-            time.sleep(2)
-
-            # Vuốt màn hình từ trên xuống dưới (tương đối)
-            swipe_x = screen_width // 2
-            swipe_start_y = int(screen_height * 0.2)  # 20% từ đỉnh
-            swipe_end_y = int(screen_height * 0.8)    # 80% từ đỉnh
-            log("Vuốt màn hình...")
-            swipe(swipe_x, swipe_start_y, swipe_x, swipe_end_y, 300)
-            time.sleep(2)
-
-            # K kiểm tra trạng thái Follow
-            log("Kiểm tra trạng thái Follow...")
-            status = check_follow_status()
-            if status:
-                log(f"Kết quả: {status}")
-                return status
-            else:
-                log("Không thể xác định trạng thái Follow")
-                return False
-
         else:
-            log(f"Task type không hợp lệ: {task_type}")
+            log("Không nhận diện được trạng thái Follow")
             return False
 
     except Exception as e:
-        log(f"Lỗi khi thực hiện {task_type}: {e}")
+        log(f"Lỗi khi kiểm tra trạng thái: {e}")
         return False
+    finally:
+        # Xóa ảnh
+        if os.path.exists(local_path):
+            os.remove(local_path)
+        if os.path.exists(cropped_path):
+            os.remove(cropped_path)
+        run_termux_command(f"rm {remote_path}")
 
 def main():
-    # Thực hiện thao tác Follow
-    result = perform_action("follow", follow_x_percent=33, follow_y_percent=25)
+    # Kiểm tra trạng thái Follow
+    result = check_follow_status(follow_x_percent=33, follow_y_percent=25)
     log(f"Kết quả cuối cùng: {result}")
 
 if __name__ == "__main__":
