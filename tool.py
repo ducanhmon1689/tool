@@ -6,6 +6,13 @@ from datetime import datetime
 import requests
 from pystyle import Colors, Colorate, Write, Center, Box
 
+# Import follow_like.py functions
+try:
+    from follow_like import perform_action
+except ImportError:
+    print(Colors.red + "[!] Không tìm thấy follow_like.py trong cùng thư mục!")
+    sys.exit(1)
+
 # ANSI color codes
 den = "\033[1;90m"
 luc = "\033[1;32m"
@@ -58,7 +65,6 @@ def open_tiktok_link(link):
     try:
         os.system(f'termux-open-url "{link}"')
         sleep(2)  # Wait for the link to open
-        os.system(f"input tap 540 650")  # Simulate tap for follow
         return True
     except Exception as e:
         with print_lock:
@@ -189,7 +195,7 @@ def process_account(index, username, token_tds, nhiem_vu, dl, nv_nhan):
             print(red + f"[!] Token TDS cho tài khoản {username} không hợp lệ!")
         return
     with print_lock:
-        print(luc + f"[*] Đã đọc token TDS cho {username}: {token_tds[:10]}...")
+        print(luc + f"[*] Đ organiseread token TDS cho {username}: {token_tds[:10]}...")
 
     # Initialize TDS API with token
     tds = TraoDoiSub_Api(token_tds)
@@ -273,11 +279,11 @@ def process_account(index, username, token_tds, nhiem_vu, dl, nv_nhan):
                     id = i['id']
                     link = i['link']
                     if open_tiktok_link(link):
-                        # Simulate follow action
-                        result = "Follow ok"  # Assume success for Termux (no ADB device check)
+                        # Call perform_action from follow_like.py
+                        result = perform_action("termux_device", 'follow')  # Placeholder device ID for Termux
                         if result == "Follow ok":
                             consecutive_nha_follow = 0  # Reset counter on success
-                        else:
+                        elif result == "Nhả follow":
                             consecutive_nha_follow += 1
                             with print_lock:
                                 print(red + f"[!] [{username}] Nhả follow cho ID: {id} (Lần {consecutive_nha_follow}/{max_consecutive_nha_follow})")
@@ -285,6 +291,8 @@ def process_account(index, username, token_tds, nhiem_vu, dl, nv_nhan):
                                 with print_lock:
                                     print(red + f"[!] [{username}] Đã đạt {max_consecutive_nha_follow} lần Nhả follow liên tục. Dừng tool cho tài khoản {username}.")
                                 return
+                        else:
+                            consecutive_nha_follow = 0  # Reset counter on failure
 
                         # Swipe down and press Back
                         swipe_and_back()
