@@ -1,7 +1,8 @@
-import socket
+import requests
 import time
 import os
 import sys
+import json
 
 # Thiết lập thư mục log
 log_dir = os.path.join(os.path.dirname(__file__), 'log')
@@ -15,26 +16,20 @@ def log(message):
     with open(log_file, 'a', encoding='utf-8') as f:
         f.write(f"{timestamp} - {message}\n")
 
-def send_follow_request(host='127.0.0.1', port=12345):
-    """Gửi yêu cầu Follow đến server trên PC và nhận kết quả"""
+def send_follow_request(url='http://127.0.0.1:8000/follow'):
+    """Gửi yêu cầu Follow đến web server trên PC và nhận kết quả"""
     try:
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect((host, port))
-        log(f"Kết nối đến server tại {host}:{port}")
-        
-        # Gửi yêu cầu Follow
-        client.send("FOLLOW".encode('utf-8'))
-        log("Đã gửi yêu cầu Follow")
-        
-        # Nhận kết quả
-        result = client.recv(1024).decode('utf-8')
+        headers = {'Content-Type': 'application/json'}
+        data = {'task': 'FOLLOW'}
+        log(f"Đang gửi yêu cầu đến {url}")
+        response = requests.post(url, json=data, headers=headers, timeout=10)
+        response.raise_for_status()
+        result = response.json()
         log(f"Kết quả từ server: {result}")
-        return result
+        return result.get('result', 'Error: No result')
     except Exception as e:
-        log(f"Lỗi khi gửi yêu cầu: {e}")
+        log(f"Lỗi khi gửi yêu cầu: {str(e)}")
         return f"Error: {str(e)}"
-    finally:
-        client.close()
 
 def main():
     result = send_follow_request()
