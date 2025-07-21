@@ -18,18 +18,18 @@ def log(message):
     with open(log_file, 'a', encoding='utf-8') as f:
         f.write(f"{timestamp} - {message}\n")
 
-def run_adb_command(command):
-    """Chạy lệnh ADB và trả về kết quả"""
+def run_termux_command(command):
+    """Chạy lệnh Termux và trả về kết quả"""
     try:
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        result = subprocess.run(command, capture_output=True, text=True, check=True, shell=True)
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        log(f"Lỗi khi chạy lệnh ADB: {e}")
+        log(f"Lỗi khi chạy lệnh Termux: {e}")
         return None
 
 def get_screen_resolution():
-    """Lấy độ phân giải màn hình bằng lệnh ADB"""
-    output = run_adb_command(['adb', 'shell', 'wm', 'size'])
+    """Lấy độ phân giải màn hình bằng Termux API"""
+    output = run_termux_command("termux-toast | wm size")
     if output:
         match = re.search(r'(\d+)x(\d+)', output)
         if match:
@@ -39,23 +39,23 @@ def get_screen_resolution():
     return 1080, 1920
 
 def tap(x, y):
-    """Nhấn vào tọa độ (x, y) trên màn hình"""
-    command = ['adb', 'shell', 'input', 'tap', str(x), str(y)]
-    run_adb_command(command)
+    """Nhấn vào tọa độ (x, y) bằng Termux API"""
+    command = f"termux-toast | input tap {x} {y}"
+    run_termux_command(command)
     time.sleep(1)
 
 def swipe(start_x, start_y, end_x, end_y, duration_ms=300):
     """Vuốt từ (start_x, start_y) đến (end_x, end_y)"""
-    command = ['adb', 'shell', 'input', 'swipe', str(start_x), str(start_y), str(end_x), str(end_y), str(duration_ms)]
-    run_adb_command(command)
+    command = f"termux-toast | input swipe {start_x} {start_y} {end_x} {end_y} {duration_ms}"
+    run_termux_command(command)
     time.sleep(1)
 
 def capture_screenshot():
-    """Chụp ảnh màn hình và lưu vào /sdcard/screenshot.png"""
+    """Chụp ảnh màn hình bằng Termux API"""
     screenshot_path = "/sdcard/screenshot.png"
     local_path = os.path.join(os.path.dirname(__file__), 'screenshot.png')
-    run_adb_command(['adb', 'shell', 'screencap', screenshot_path])
-    run_adb_command(['adb', 'pull', screenshot_path, local_path])
+    run_termux_command(f"termux-toast | screencap -p {screenshot_path}")
+    run_termux_command(f"cp {screenshot_path} {local_path}")
     return local_path, screenshot_path
 
 def check_follow_status():
@@ -73,7 +73,7 @@ def check_follow_status():
     finally:
         if os.path.exists(local_path):
             os.remove(local_path)
-        run_adb_command(['adb', 'shell', 'rm', remote_path])
+        run_termux_command(f"rm {remote_path}")
 
 def perform_action(task_type, follow_x_percent=33, follow_y_percent=25):
     """Thực hiện thao tác Follow và kiểm tra trạng thái"""
@@ -87,7 +87,7 @@ def perform_action(task_type, follow_x_percent=33, follow_y_percent=25):
             # Nhấn nút Follow
             log("Nhấn nút Follow...")
             tap(follow_x, follow_y)
-            time.sleep(2)  # Chờ TikTok cập nhật
+            time.sleep(2)
 
             # Vuốt màn hình từ trên xuống dưới (tương đối)
             swipe_x = screen_width // 2
@@ -97,7 +97,7 @@ def perform_action(task_type, follow_x_percent=33, follow_y_percent=25):
             swipe(swipe_x, swipe_start_y, swipe_x, swipe_end_y, 300)
             time.sleep(2)
 
-            # Kiểm tra trạng thái Follow
+            # K kiểm tra trạng thái Follow
             log("Kiểm tra trạng thái Follow...")
             status = check_follow_status()
             if status:
