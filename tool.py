@@ -6,11 +6,15 @@ from datetime import datetime
 import requests
 from pystyle import Colors, Colorate, Write, Center, Box
 
+# Ensure the current directory is in the Python path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 # Import follow_like.py functions
 try:
     from follow_like import perform_action
 except ImportError:
     print(Colors.red + "[!] Không tìm thấy follow_like.py trong cùng thư mục!")
+    print(Colors.red + "[!] Vui lòng kiểm tra file follow_like.py tồn tại và đúng tên trong thư mục hiện tại.")
     sys.exit(1)
 
 # ANSI color codes
@@ -195,7 +199,7 @@ def process_account(index, username, token_tds, nhiem_vu, dl, nv_nhan):
             print(red + f"[!] Token TDS cho tài khoản {username} không hợp lệ!")
         return
     with print_lock:
-        print(luc + f"[*] Đ organiseread token TDS cho {username}: {token_tds[:10]}...")
+        print(luc + f"[*] Đã đọc token TDS cho {username}: {token_tds[:10]}...")
 
     # Initialize TDS API with token
     tds = TraoDoiSub_Api(token_tds)
@@ -292,7 +296,7 @@ def process_account(index, username, token_tds, nhiem_vu, dl, nv_nhan):
                                     print(red + f"[!] [{username}] Đã đạt {max_consecutive_nha_follow} lần Nhả follow liên tục. Dừng tool cho tài khoản {username}.")
                                 return
                         else:
-                            consecutive_nha_follow = 0  # Reset counter on failure
+                            consecutive_nha_follow = 0  # Reset counter on other results
 
                         # Swipe down and press Back
                         swipe_and_back()
@@ -344,6 +348,12 @@ def main():
     '''
     print(Colorate.Horizontal(Colors.yellow_to_red, Center.XCenter(banner)))
     print(red + Center.XCenter(Box.DoubleCube("Tool TDS TikTok Multi-Task v1.7 - Termux")))
+
+    # Verify follow_like.py exists
+    if not os.path.isfile("follow_like.py"):
+        print(Colors.red + "[!] File follow_like.py không tồn tại trong thư mục hiện tại!")
+        print(Colors.red + "[!] Vui lòng đảm bảo follow_like.py được đặt cùng thư mục với tool.py.")
+        sys.exit(1)
 
     # Load devices from devices.txt
     device_list = load_devices()
